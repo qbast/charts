@@ -43,15 +43,18 @@ chart and their default values.
 
 | Parameter                        | Description                                                  | Default                                                    |
 | -----------------------          | ----------------------------------                           | ---------------------------------------------------------- |
-| `imageRepository`                | Gogs image                                                   | `gogs/gogs`                                                |
-| `imageTag`                       | Gogs image version                                           | `0.11.29`                                                  |
-| `imagePullPolicy`                | Gogs image pull policy                                       | `Always` if `imageTag` is `latest`, else `IfNotPresent`    |
+| `image.repository`                | Gogs image                                                   | `gogs/gogs`                                                |
+| `image.tag`                       | Gogs image tag                                           | `0.11.86`                                                  |
+| `image.pullPolicy`                | Gogs image pull policy                                       | `Always` if `imageTag` is `latest`, else `IfNotPresent`    |
 | `postgresql.install`             | Weather or not to install PostgreSQL dependency              | `true`                                                     |
 | `postgresql.postgresHost`        | PostgreSQL host (if `postgresql.install == false`)           | `nil`                                                      |
 | `postgresql.postgresUser`        | PostgreSQL User to create                                    | `gogs`                                                     |
 | `postgresql.postgresPassword`    | PostgreSQL Password for the new user                         | `gogs`                                                     |
 | `postgresql.postgresDatabase`    | PostgreSQL Database to create                                | `gogs`                                                     |
+| `postgresql.postgresSSLMode`     | PostgreSQL SSL Mode                                          | `disable`                                                  |
 | `postgresql.persistence.enabled` | Enable PostgreSQL persistence using Persistent Volume Claims | `true`                                                     |
+| `service.httpNodePort`           | Enable a static port where the Gogs http service is exposed on each Node’s IP | `nil`                                     |
+| `service.sshNodePort`            | Enable a static port where the Gogs ssh service is exposed on each Node’s IP | `nil`                                      |
 
 See [values.yaml](values.yaml) for a more complete list, and links to the Gogs documentation.
 

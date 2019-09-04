@@ -3,71 +3,94 @@ kind: Deployment
 metadata:
   name: {{ template "odoo.fullname" . }}
   labels:
-    app: {{ template "odoo.fullname" . }}
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    release: "{{ .Release.Name }}"
-    heritage: "{{ .Release.Service }}"
+    app: {{ template "odoo.name" . }}
+    chart: {{ template "odoo.chart" . }}
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}
 spec:
+  selector:
+    matchLabels:
+      app: {{ template "odoo.name" . }}
+      release: "{{ .Release.Name }}"
   template:
     metadata:
       labels:
-        app: {{ template "odoo.fullname" . }}
+        app: {{ template "odoo.name" . }}
+        chart: {{ template "odoo.chart" . }}
+        release: {{ .Release.Name | quote }}
     spec:
-      {{- if .Values.image.pullSecrets }}
-      imagePullSecrets:
-      {{- range .Values.image.pullSecrets }}
-        - name: {{ . }}
-      {{- end}}
-      {{- end }}
+{{- include "odoo.imagePullSecrets" . | indent 6 }}
       containers:
       - name: {{ template "odoo.fullname" . }}
-        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        image: {{ template "odoo.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
         env:
         - name: POSTGRESQL_HOST
-          value: {{ template "odoo.postgresql.fullname" . }}
+          value: {{ ternary (include "odoo.postgresql.fullname" .) .Values.externalDatabase.host .Values.postgresql.enabled | quote }}
+        - name: POSTGRESQL_USER
+          value: {{ ternary "postgres" .Values.externalDatabase.user .Values.postgresql.enabled | quote }}
         - name: POSTGRESQL_PORT_NUMBER
-          value: "5432"
+          value: {{ ternary "5432" .Values.externalDatabase.port .Values.postgresql.enabled | quote }}
         - name: POSTGRESQL_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ template "odoo.postgresql.fullname" . }}
-              key: postgres-password
+              name: {{ ternary (include "odoo.postgresql.fullname" .) (printf "%s-%s" .Release.Name "externaldb") .Values.postgresql.enabled | quote }}
+              key: {{ ternary "postgresql-password" "db-password" .Values.postgresql.enabled | quote }}
         - name: ODOO_EMAIL
-          value: {{ default "" .Values.odooEmail | quote }}
+          value: {{ .Values.odooEmail | quote }}
         - name: ODOO_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ template "odoo.fullname" . }}
               key: odoo-password
+        {{- if .Values.smtpHost }}
         - name: SMTP_HOST
-          value: {{ default "" .Values.smtpHost | quote }}
+          value: {{ .Values.smtpHost | quote }}
+        {{- end }}
+        {{- if .Values.smtpPort }}
         - name: SMTP_PORT
-          value: {{ default "" .Values.smtpPort | quote }}
+          value: {{ .Values.smtpPort | quote }}
+        {{- end }}
+        {{- if .Values.smtpUser }}
         - name: SMTP_USER
-          value: {{ default "" .Values.smtpUser | quote }}
+          value: {{ .Values.smtpUser | quote }}
+        {{- end }}
+        {{- if .Values.smtpPassword }}
         - name: SMTP_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ template "odoo.fullname" . }}
               key: smtp-password
+        {{- end }}
+        {{- if .Values.smtpProtocol }}
         - name: SMTP_PROTOCOL
-          value: {{ default "" .Values.smtpProtocol | quote }}
+          value: {{ .Values.smtpProtocol | quote }}
+        {{- end }}
         ports:
         - name: http
           containerPort: 8069
+        {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
             path: /
             port: http
-          initialDelaySeconds: 300
-          timeoutSeconds: 30
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
             path: /
             port: http
-          initialDelaySeconds: 5
-          timeoutSeconds: 1
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         volumeMounts:
@@ -77,7 +100,7 @@ spec:
       - name: odoo-data
       {{- if .Values.persistence.enabled }}
         persistentVolumeClaim:
-          claimName: {{ template "odoo.fullname" . }}
+          claimName: {{ .Values.persistence.existingClaim | default (include "odoo.fullname" .) }}
       {{- else }}
         emptyDir: {}
       {{- end }}

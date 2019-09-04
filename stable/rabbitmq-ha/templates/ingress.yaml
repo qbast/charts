@@ -3,9 +3,10 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ template "rabbitmq-ha.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ template "rabbitmq-ha.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    chart: {{ template "rabbitmq-ha.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
   annotations:
@@ -24,15 +25,13 @@ spec:
           - path: {{ .Values.ingress.path }}
             backend:
               serviceName: {{ template "rabbitmq-ha.fullname" . }}
-              servicePort: http
+              servicePort: {{ .Values.rabbitmqManagerPort }}
 {{- if .Values.ingress.tls }}
   tls:
-    - hosts:
-        {{- if  .Values.ingress.hostName }}
+    - secretName: {{  .Values.ingress.tlsSecret }}
+      {{- if .Values.ingress.hostName }}
+      hosts:
         - {{ .Values.ingress.hostName }}
-        secretName: {{  .Values.ingress.tlsSecret }}
-        {{- else}}
-        - secretName: {{  .Values.ingress.tlsSecret }}
-        {{- end }}
+      {{- end }}
 {{- end }}
 {{- end }}

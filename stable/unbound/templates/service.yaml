@@ -8,6 +8,10 @@ metadata:
     release: {{ .Release.Name  }}
     heritage: {{ .Release.Service }}
 spec:
+  {{- if .Values.externalIP }}
+  externalIPs:
+    - {{ .Values.externalIP }}
+  {{- end }}
   selector:
     app: {{ template "unbound.name" . }}
     release: {{ .Release.Name }}
@@ -16,3 +20,7 @@ spec:
     protocol: UDP
     port: {{ .Values.unbound.serverPort }}
     targetPort: dns-udp
+  - name: dns-tcp
+    protocol: TCP
+    port: {{ .Values.unbound.serverPort }}
+    targetPort: dns-tcp

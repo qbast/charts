@@ -21,7 +21,7 @@ Domain: consul
 Component: "consul"
 Replicas: 3
 Image: "consul"
-ImageTag: "1.0.0"
+ImageTag: "1.5.3"
 ImagePullPolicy: "Always"
 Resources: {}
  # requests:
@@ -31,6 +31,9 @@ Resources: {}
  #   cpu: "500m"
  #   memory: "512Mi"
 ## Persistent volume size
+
+priorityClassName: ""
+
 Storage: "1Gi"
 
 ## Needed for 0.8.0 and later IF all consul containers are spun up
@@ -42,8 +45,21 @@ DisableHostNodeId: false
 ## default 'dc1'
 # DatacenterName: dc1
 
-## Encrypt Gossip traffic
-EncryptGossip: true
+## Explicitly set LAN hosts to join.
+# Added as -retry-join argument
+# If you set joinPeers then we will not auto-build the list of peers for you
+# These hostnames will be verified to be resolvable and ping-able before the consul service will start
+joinPeers: []
+
+## Set list of WAN hosts to join
+# Added as -retry-join-wan argument
+# These hostnames will be verified to be resolvable before the consul service will start
+joinWan: []
+
+## Encrypt Gossip Traffic
+Gossip:
+  Encrypt: true
+  Create: true
 
 ## predefined value for gossip key.
 ## Will use a generated random alpha numeric if not provided
@@ -76,12 +92,19 @@ maxUnavailable: 1
 #         values:
 #         - true
 
-## Anti-Affinity setting. The default "hard" will use pod anti-affinity that is
-## requiredDuringSchedulingIgnoredDuringExecution to ensure 2 services don't
-## end up on the same node. Setting this to "soft" will use
-## preferredDuringSchedulingIgnoredDuringExecution. If set to anything else,
-## no anti-affinity rules will be configured.
-antiAffinity: "hard"
+## Affinity settings
+affinity: |
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 1
+      podAffinityTerm:
+        topologyKey: kubernetes.io/hostname
+        labelSelector:
+          matchExpressions:
+          - key: component
+            operator: In
+            values:
+            - "{{ .Release.Name }}-{{ .Values.Component }}"
 
 ## Enable Consul Web UI
 ##
@@ -92,15 +115,46 @@ ui:
 uiService:
   enabled: true
   type: "NodePort"
+  annotations: {}
+
+ConsulConfig: []
+#  - type: secret
+#    name: consul-defaults
+#  - type: configMap
+#    name: consul-defaults
 
 ## Create an Ingress for the Web UI
 uiIngress:
   enabled: false
   annotations: {}
+  labels: {}
   hosts: []
-  tls: {}
+  tls: []
+
+## Useful when ACLs are enabled
+acl:
+  enabled: false
+  masterToken: ""
+  agentToken: ""
 
 ## test container details
 test:
   image: lachlanevenson/k8s-kubectl
   imageTag: v1.4.8-bash
+  rbac:
+    create: false
+    serviceAccountName: ""
+
+nodeSelector: {}
+tolerations: []
+additionalLabels: {}
+
+# Lifecycle for StatefulSet
+# lifecycle:
+#   preStop:
+#     exec:
+#       command:
+#       - sh
+#       - -c
+#       - "sleep 60"
+forceIpv6: false

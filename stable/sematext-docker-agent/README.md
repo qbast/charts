@@ -1,3 +1,5 @@
+**This chart is DEPRECATED, use [stable/sematext-agent](https://github.com/helm/charts/tree/master/stable/sematext-agent) instead!**
+
 # Sematext Docker Agent
 
 [Sematext](https://sematext.com/) Agent for Docker collects Metrics, Events, and Logs from the Docker API for SPM Docker Monitoring & Logsene / Hosted ELK Log Management.
@@ -49,7 +51,7 @@ The following table lists the configuration parameters of the sematext-docker-ag
 | `resources.limits.cpu`        | CPU resource limits                  | `Nil`                                     |
 | `resources.requests.memory`   | Memory resource requests             | `Nil`                                     |
 | `resources.limits.memory`     | Memory resource limits               | `Nil`                                     |
-| `sematext.useHostNetwork`     | Use the host networking              | `true`                                    |
+| `sematext.useHostNetwork`     | Use the host networking              | `false`                                   |
 | `sematext.url.spmReceiver`    | Custom endpoint for SPM receiver     | `Nil`                                     |
 | `sematext.url.logseneReceiver`| Custom endpoint for Logsene receiver | `Nil`                                     |
 | `sematext.url.eventsReceiver` | Custom endpoint for Events receiver  | `Nil`                                     |

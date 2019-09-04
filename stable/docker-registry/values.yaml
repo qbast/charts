@@ -9,25 +9,33 @@ updateStrategy:
   #   maxSurge: 1
   #   maxUnavailable: 0
 
+podAnnotations: {}
+podLabels: {}
+
 image:
   repository: registry
-  tag: 2.6.2
+  tag: 2.7.1
   pullPolicy: IfNotPresent
+# imagePullSecrets:
+    # - name: docker
 service:
   name: registry
   type: ClusterIP
+  # clusterIP:
   port: 5000
   # nodePort:
   annotations: {}
   # foo.io/bar: "true"
 ingress:
   enabled: false
+  path: /
   # Used to create an Ingress record.
   hosts:
     - chart-example.local
   annotations:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
+  labels: {}
   tls:
     # Secrets must be manually created in the namespace.
     # - secretName: chart-example-tls
@@ -58,17 +66,32 @@ storage: filesystem
 secrets:
   haSharedSecret: ""
   htpasswd: ""
+# Secrets for Azure
+#   azure:
+#     accountName: ""
+#     accountKey: ""
+#     container: ""
 # Secrets for S3 access and secret keys
 #   s3:
 #     accessKey: ""
 #     secretKey: ""
+# Secrets for Swift username and password
+#   swift:
+#     username: ""
+#     password: ""
 
 # Options for s3 storage type:
 # s3:
 #  region: us-east-1
+#  regionEndpoint: s3.us-east-1.amazonaws.com
 #  bucket: my-bucket
 #  encrypt: false
 #  secure: true
+
+# Options for swift storage type:
+# swift:
+#  authurl: http://swift.example.com/
+#  container: my-container
 
 configData:
   version: 0.1
@@ -87,3 +110,18 @@ configData:
       enabled: true
       interval: 10s
       threshold: 3
+
+securityContext:
+  enabled: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+priorityClassName: ""
+
+podDisruptionBudget: {}
+  # maxUnavailable: 1
+  # minAvailable: 2
+
+nodeSelector: {}
+
+tolerations: []

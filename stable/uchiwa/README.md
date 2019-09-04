@@ -35,8 +35,6 @@ To install the chart with the release name `my-release`:
 $ helm install --name my-release stable/uchiwa
 ```
 
-*Replace the `x.x.x` placeholder with the chart release version.*
-
 The command deploys Uchiwa on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
 
 > **Tip**: List all releases using `helm list`
@@ -71,7 +69,7 @@ The following table lists the configurable parameters of the Uchiwa chart and th
 | `port` | Port on which Uchiwa will listen | `3000` |
 | `refresh` | Determines the interval to pull the Sensu APIs, in seconds | `10` |
 | `loglevel` | Level of logging to show after Uchiwa has started | `info` |
-
+| `config` | Custom content configuration file (json) | [default](https://github.com/challengerdeep/charts/blob/uchiwa-config/stable/uchiwa/templates/configmap.yaml#L16)|
 
 Detailed documentation for the `config` json can be found at [Uchiwa/Docs](https://docs.uchiwa.io/getting-started/configuration/)
 

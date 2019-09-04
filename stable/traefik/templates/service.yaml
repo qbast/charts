@@ -4,9 +4,9 @@ metadata:
   name: {{ template "traefik.fullname" . }}
   labels:
     app: {{ template "traefik.name" . }}
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    release: "{{ .Release.Name }}"
-    heritage: "{{ .Release.Service }}"
+    chart: {{ template "traefik.chart" . }}
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}
   {{- if .Values.service }}
   {{- range $key, $value := .Values.service.labels }}
     {{ $key }}: {{ $value | quote }}
@@ -23,6 +23,10 @@ spec:
   {{- if .Values.loadBalancerIP }}
   loadBalancerIP: {{ .Values.loadBalancerIP }}
   {{- end }}
+  {{- if .Values.externalIP }}
+  externalIPs:
+    - {{ .Values.externalIP }}
+  {{- end }}
   {{- if .Values.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
     {{- range $cidr := .Values.loadBalancerSourceRanges }}
@@ -34,7 +38,7 @@ spec:
   {{- end }}
   selector:
     app: {{ template "traefik.name" . }}
-    release: {{ .Release.Name }}     
+    release: {{ .Release.Name }}
   ports:
   - port: 80
     name: http
@@ -49,8 +53,10 @@ spec:
     {{- end }}
     {{- if not .Values.ssl.enabled }}
     targetPort: httpn
+    {{- else }}
+    targetPort: https
     {{- end }}
-  {{- if or .Values.metrics.prometheus.enabled .Values.metrics.datadog.enabled .Values.metrics.statsd.enabled }}
+  {{- if (and (.Values.metrics.prometheus.enabled) (not (.Values.metrics.prometheus.restrictAccess)))}}
   - port: 8080
     name: metrics
     targetPort: dash

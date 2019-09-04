@@ -21,6 +21,19 @@ spec:
         app: {{ template "couchdb.name" . }}
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      initContainers:
+        - name: init-copy
+          image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+          imagePullPolicy: {{ .Values.initImage.pullPolicy }}
+          command: ['sh','-c','cp /tmp/chart.ini /default.d; ls -lrt /default.d;']
+          volumeMounts:
+          - name: config
+            mountPath: /tmp/
+          - name: config-storage
+            mountPath: /default.d
       containers:
         - name: couchdb
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -52,25 +65,46 @@ spec:
             - name: ERL_FLAGS
               value: "{{ range $k, $v := .Values.erlangFlags }} -{{ $k }} {{ $v }} {{ end }}"
           livenessProbe:
+{{- if .Values.couchdbConfig.chttpd.require_valid_user }}
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -G --silent --fail -u ${COUCHDB_USER}:${COUCHDB_PASSWORD} http://localhost:5984/
+{{- else }}
             httpGet:
               path: /
               port: 5984
+{{- end }}
           readinessProbe:
+{{- if .Values.couchdbConfig.chttpd.require_valid_user }}
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -G --silent --fail -u ${COUCHDB_USER}:${COUCHDB_PASSWORD} http://localhost:5984/_up
+{{- else }}
             httpGet:
               path: /_up
               port: 5984
+{{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           volumeMounts:
+          - name: config-storage
+            mountPath: /opt/couchdb/etc/default.d
           - name: database-storage
             mountPath: /opt/couchdb/data
-          - name: config
-            mountPath: /opt/couchdb/etc/default.d
         - name: couchdb-statefulset-assembler
           image: "{{ .Values.helperImage.repository }}:{{ .Values.helperImage.tag }}"
           imagePullPolicy: {{ .Values.helperImage.pullPolicy }}
-{{- if not .Values.allowAdminParty }}
           env:
+            - name: COUCHDB_CLUSTER_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ template "couchdb.fullname" . }}
+                  key: clusterSize
+{{- if not .Values.allowAdminParty }}
             - name: COUCHDB_USER
               valueFrom:
                 secretKeyRef:
@@ -82,11 +116,22 @@ spec:
                   name: {{ template "couchdb.fullname" . }}
                   key: adminPassword
 {{- end }}
+{{- if .Values.enableSearch }}
+        - name: clouseau
+          image: "{{ .Values.searchImage.repository }}:{{ .Values.searchImage.tag }}"
+          imagePullPolicy: {{ .Values.searchImage.pullPolicy }}
+{{- end }}
 {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
 {{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
       volumes:
+        - name: config-storage
+          emptyDir: {}
         - name: config
           configMap:
             name: {{ template "couchdb.fullname" . }}
@@ -102,9 +147,7 @@ spec:
         name: database-storage
         labels:
           app: {{ template "couchdb.name" . }}
-          chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
           release: {{ .Release.Name }}
-          heritage: {{ .Release.Service }}
       spec:
         accessModes:
         {{- range .Values.persistentVolume.accessModes }}

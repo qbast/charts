@@ -1,4 +1,4 @@
-apiVersion: "apps/v1beta1"
+apiVersion: "apps/v1beta2"
 kind: StatefulSet
 metadata:
   name: "{{ template "neo4j.core.fullname" . }}"
@@ -24,6 +24,8 @@ spec:
         image: "{{ .Values.image }}:{{ .Values.imageTag }}"
         imagePullPolicy: "{{ .Values.imagePullPolicy }}"
         env:
+          - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+            value: "{{ .Values.acceptLicenseAgreement }}"
           - name: NEO4J_dbms_mode
             value: CORE
           - name: NUMBER_OF_CORES
@@ -33,7 +35,7 @@ spec:
           - name: NEO4J_causal__clustering_discovery__type
             value: DNS
           - name: NEO4J_causal__clustering_initial__discovery__members
-            value: "{{ template "neo4j.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:5000"
+            value: "{{ template "neo4j.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:5000"
           {{- if .Values.authEnabled }}
           - name: NEO4J_SECRETS_PASSWORD
             valueFrom:
@@ -71,8 +73,6 @@ spec:
           name: browser
         - containerPort: 7687
           name: bolt
-        securityContext:
-          privileged: true
         volumeMounts:
         - name: datadir
           mountPath: "{{ .Values.core.persistentVolume.mountPath }}"
@@ -95,8 +95,25 @@ spec:
 {{ toYaml .Values.core.initContainers | indent 6 }}
 {{- end }}
       volumes:
+        {{- if not .Values.core.persistentVolume.enabled }}
+        - name: datadir
+          emptyDir: {}
+        {{- end }}
         - name: plugins
           emptyDir: {}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 6 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 6 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 6 }}
+{{- end }}
+  {{- if .Values.core.persistentVolume.enabled }}
   volumeClaimTemplates:
     - metadata:
         name: datadir
@@ -117,3 +134,4 @@ spec:
         resources:
           requests:
             storage: "{{ .Values.core.persistentVolume.size }}"
+  {{- end }}
